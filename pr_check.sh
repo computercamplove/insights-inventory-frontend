@@ -6,7 +6,7 @@
 export COMPONENT_NAME="host-inventory-frontend"
 # IMAGE should match the quay repo set by app.yaml in app-interface
 export IMAGE="quay.io/cloudservices/insights-inventory-frontend"
-export WORKSPACE=${WORKSPACE:-$APP_ROOT} # if running in jenkins, use the build's workspace
+export WORKSPACE=${WORKSPACE:-$APP_ROOT} # if running in jenkins, use the build's workspace,
 export IMAGE_TAG=$(git rev-parse --short=7 HEAD)
 export GIT_COMMIT=$(git rev-parse HEAD)
 export APP_ROOT=$(pwd)
