@@ -1,4 +1,5 @@
 import { spawnSync } from 'child_process';
+import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
@@ -63,7 +64,7 @@ function recordToManifest(entry: { archiveName: string; workingDir: string }) {
  * const result = uploadArchive('rhel94_core_collect.tar.gz');
  * console.log('Upload successful, HTTP code:', result.httpCode);
  */
-export function uploadArchive(archivePath: string) {
+export async function uploadArchive(archivePath: string) {
   const fullPath = `host_archives/${archivePath}`;
   const proxy = process.env.PROXY;
   const user = process.env.PLAYWRIGHT_USER;
@@ -71,13 +72,24 @@ export function uploadArchive(archivePath: string) {
     process.env.PROD === 'true'
       ? process.env.PROD_PLAYWRIGHT_PASSWORD
       : process.env.PLAYWRIGHT_PASSWORD;
+
   const uploadUrl =
     process.env.PROD === 'true'
       ? 'https://console.redhat.com/api/ingress/v1/upload'
       : 'https://console.stage.redhat.com/api/ingress/v1/upload';
+
+  if (!user || !password) {
+    throw new Error(
+      'Missing PLAYWRIGHT_USER or PLAYWRIGHT_PASSWORD environment variables.',
+    );
+  }
+
   const args = [
-    '-x',
-    `${proxy}`,
+    '--retry',
+    '3',
+    '--retry-delay',
+    '5',
+    '--retry-all-errors',
     '-s',
     '-o',
     '/tmp/upload_output.txt',
@@ -89,18 +101,16 @@ export function uploadArchive(archivePath: string) {
     '-u',
     `${user}:${password}`,
   ];
+
+  if (proxy && proxy !== 'undefined') args.unshift('-x', proxy);
+
   const result = spawnSync('curl', args, { encoding: 'utf-8' });
-  const stdout = result.stdout.trim();
-  const httpCode = Number(stdout.slice(-3));
-  if (!user || !password) {
-    throw new Error(
-      'Missing PLAYWRIGHT_USER or PLAYWRIGHT_PASSWORD environment variables.',
-    );
-  }
-  if (result.error) {
-    throw new Error(`Failed to execute curl: ${result.error.message}`);
-  }
-  if (httpCode !== 201 && httpCode !== 202) {
+
+  if (result.error) throw new Error(`Curl failed: ${result.error.message}`);
+
+  const httpCode = Number(result.stdout.trim());
+
+  if (httpCode !== 201) {
     const stderrMsg = result.stderr?.toString().trim() || 'Unknown error';
     throw new Error(
       `Upload failed with HTTP code ${httpCode}. stderr: ${stderrMsg}`,
@@ -207,11 +217,11 @@ export function prepareTestArchive(hostArchive: string) {
  *  @property {string} hostname    The name of the target execution system.
  *  @property {string} archiveName The name of the uploaded archive file.
  */
-export function prepareSingleSystem(
+export async function prepareSingleSystem(
   hostArchive: string = PACKAGE_BASED_ARCHIVE,
 ) {
   const result = prepareTestArchive(hostArchive);
-  uploadArchive(result.archiveName);
+  await uploadArchive(result.archiveName);
   return result;
 }
 
@@ -223,9 +233,11 @@ export function prepareSingleSystem(
 export async function setupMultipleSystemsParallel(
   archives: string[] = Array(3).fill(PACKAGE_BASED_ARCHIVE),
 ) {
-  // Note: This requires making your other functions async
-  const fleet = await Promise.all(
-    archives.map((archive) => prepareSingleSystem(archive)),
-  );
+  const fleet = [];
+
+  for (const archive of archives) {
+    const result = await prepareSingleSystem(archive);
+    fleet.push(result);
+  }
   return fleet;
 }
