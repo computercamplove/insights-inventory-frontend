@@ -1,9 +1,7 @@
 import { expect } from '@playwright/test';
-import {
-  prepareSingleSystem,
-  cleanupTestArchive,
-} from './helpers/uploadArchive';
-import { test, navigateToInventorySystemsFunc } from './helpers/navHelpers';
+import { prepareSingleSystem } from './helpers/uploadArchive';
+import { navigateToInventorySystemsFunc } from './helpers/navHelpers';
+import { test } from './helpers/fixtures';
 import { searchByName } from './helpers/filterHelpers';
 
 test('User should be able to edit and delete a system from Systems page', async ({
@@ -20,7 +18,7 @@ test('User should be able to edit and delete a system from Systems page', async 
      - importance: critical
    */
   const setupResult = prepareSingleSystem();
-  const { hostname: systemName, archiveName, workingDir } = setupResult;
+  const { hostname: systemName } = setupResult;
   const renamedSystemName = `${systemName}_Renamed`;
   const dialog = page.locator('[role="dialog"]');
 
@@ -64,10 +62,6 @@ test('User should be able to edit and delete a system from Systems page', async 
     await searchByName(page, renamedSystemName);
     await expect(page.getByText('No matching systems found')).toBeVisible();
   });
-
-  await test.step('Cleanup the created archive and temp directory', async () => {
-    cleanupTestArchive(archiveName, workingDir);
-  });
 });
 
 test('User should be able to edit and delete a system from System Details page', async ({
@@ -84,7 +78,7 @@ test('User should be able to edit and delete a system from System Details page',
      - importance: critical
    */
   const setupResult = prepareSingleSystem();
-  const { hostname: systemName, archiveName, workingDir } = setupResult;
+  const { hostname: systemName } = setupResult;
 
   const editButtons = page.getByRole('button', { name: 'Edit' });
   const dialogModal = page.locator('[role="dialog"]');
@@ -140,10 +134,6 @@ test('User should be able to edit and delete a system from System Details page',
     await expect(page.getByText('Delete operation finished')).toBeVisible({
       timeout: 5000,
     });
-  });
-
-  await test.step('Cleanup the created archive and temp directory', async () => {
-    cleanupTestArchive(archiveName, workingDir);
   });
 });
 
@@ -238,6 +228,7 @@ test('User should be able to export systems to CSV', async ({ page }) => {
 
 test('User should be able to delete multiple systems from Systems page', async ({
   page,
+  systems,
 }) => {
   /**
    * Jira References:
@@ -247,10 +238,7 @@ test('User should be able to delete multiple systems from Systems page', async (
      - inv-hosts-delete-by-id
      - importance: critical
    */
-  const systems = Array.from({ length: 3 }, () => prepareSingleSystem());
-
-  const archives = systems.map((s) => s.archiveName);
-  const dirs = systems.map((s) => s.workingDir);
+  const systemsToDelete = systems.packageSystems[0].hostname;
   const dialog = page.locator('[role="dialog"]');
   const systemName = 'insights-pw-vm';
 
@@ -274,12 +262,6 @@ test('User should be able to delete multiple systems from Systems page', async (
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText('Delete systems from inventory?');
     await dialog.getByRole('button', { name: 'Delete' }).click();
-  });
-
-  await test.step('Cleanup the created archives and temp directories', async () => {
-    for (let i = 0; i < systems.length; i++) {
-      cleanupTestArchive(archives[i], dirs[i]);
-    }
   });
 });
 

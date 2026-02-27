@@ -1,5 +1,5 @@
 import { ConsoleMessage, expect } from '@playwright/test';
-import { test } from './helpers/navHelpers';
+import { test } from './helpers/fixtures';
 
 // URL constants
 const systemsPageUrls = [

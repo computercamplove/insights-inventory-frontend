@@ -1,12 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { navigateToInventorySystemsFunc } from './helpers/navHelpers';
 import {
-  prepareSingleSystem,
-  cleanupTestArchive,
-  BOOTC_ARCHIVE,
-  CENTOS_ARCHIVE,
-} from './helpers/uploadArchive';
-import {
   filterSystemsWithConditionalFilter,
   assertAllContain,
   parseLastSeenToDays,
@@ -14,28 +8,10 @@ import {
 import { closePopupsIfExist } from './helpers/loginHelpers';
 
 test.describe('Filtering Systems Tests', () => {
-  let systemName: string;
-  let archiveName: string;
-  let workingDir: string;
-  let systemBootcName: string;
-  let archiveBootcName: string;
-  let workingBootcDir: string;
   const operatingSystemTestCases = [
     { OS: 'RHEL 9.4' },
     { OS: 'CentOS Linux 7.6' },
   ];
-
-  test.beforeAll(async () => {
-    const setupResult = prepareSingleSystem();
-    const setupBootcResult = prepareSingleSystem(BOOTC_ARCHIVE);
-
-    ({ hostname: systemName, archiveName, workingDir } = setupResult);
-    ({
-      hostname: systemBootcName,
-      archiveName: archiveBootcName,
-      workingDir: workingBootcDir,
-    } = setupBootcResult);
-  });
 
   test.beforeEach(async ({ page }) => {
     await closePopupsIfExist(page);
@@ -46,11 +22,6 @@ test.describe('Filtering Systems Tests', () => {
     if (await resetFiltersButton.isVisible({ timeout: 100 })) {
       await resetFiltersButton.click();
     }
-  });
-
-  test.afterAll(async () => {
-    cleanupTestArchive(archiveName, workingDir);
-    cleanupTestArchive(archiveBootcName, workingBootcDir);
   });
 
   test('User can filter systems by System type', async ({ page }) => {

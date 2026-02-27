@@ -1,6 +1,5 @@
 import { expect } from '@playwright/test';
 import {
-  test,
   navigateToWorkspacesFunc,
   navigateToInventorySystemsFunc,
 } from './helpers/navHelpers';
@@ -9,10 +8,8 @@ import {
   generateUniqueWorkspaceName,
   createNewWorkspace,
 } from './helpers/workspaceHelpers';
-import {
-  cleanupTestArchive,
-  prepareSingleSystem,
-} from './helpers/uploadArchive';
+import { prepareSingleSystem } from './helpers/uploadArchive';
+import { test } from './helpers/fixtures';
 
 test('User can create, rename, and delete a workspace from Workspace Details page', async ({
   page,
@@ -294,7 +291,7 @@ test('User can add and remove system from an empty workspace', async ({
 
   const workspaceName = await generateUniqueWorkspaceName();
   const setupResult = prepareSingleSystem();
-  const { hostname: systemName, archiveName, workingDir } = setupResult;
+  const { hostname: systemName } = setupResult;
   const nameColumnLocator = page.locator('td[data-label="Name"]');
 
   await test.step('Confirm system exists in Inventory Systems', async () => {
@@ -393,10 +390,6 @@ test('User can add and remove system from an empty workspace', async ({
       ),
     ).toBeVisible({ timeout: 100000 });
   });
-
-  await test.step('Cleanup test files', async () => {
-    cleanupTestArchive(archiveName, workingDir);
-  });
 });
 
 test('User can add a system to an existing workspace with systems', async ({
@@ -412,7 +405,7 @@ test('User can add a system to an existing workspace with systems', async ({
 
   const workspaceName = 'Workspace_with_systems';
   const setupResult = prepareSingleSystem();
-  const { hostname: systemName, archiveName, workingDir } = setupResult;
+  const { hostname: systemName } = setupResult;
   const nameColumnLocator = page.locator('td[data-label="Name"]');
 
   await test.step('Navigate to Inventory Systems and confirm system is available', async () => {
@@ -485,10 +478,6 @@ test('User can add a system to an existing workspace with systems', async ({
         exact: false,
       }),
     ).toBeVisible({ timeout: 100000 });
-  });
-
-  await test.step('Cleanup test artifacts', async () => {
-    cleanupTestArchive(archiveName, workingDir);
   });
 });
 
@@ -665,7 +654,7 @@ test('User can add a system to workspace from Systems page', async ({
 
   const workspaceName = 'Workspace_with_systems';
   const setupResult = prepareSingleSystem();
-  const { hostname: systemName, archiveName, workingDir } = setupResult;
+  const { hostname: systemName } = setupResult;
   const nameColumnLocator = page.locator('td[data-label="Name"]');
 
   await test.step('Navigate to Inventory → Systems', async () => {
@@ -756,9 +745,5 @@ test('User can add a system to workspace from Systems page', async ({
       },
     );
     await expect(nameCellWithValue.first()).toBeVisible();
-  });
-
-  await test.step('Cleanup test artifacts', async () => {
-    cleanupTestArchive(archiveName, workingDir);
   });
 });

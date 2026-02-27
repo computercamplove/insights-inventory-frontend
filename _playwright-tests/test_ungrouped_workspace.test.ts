@@ -1,7 +1,6 @@
 import { expect } from '@playwright/test';
 import { type Page } from '@playwright/test';
 import {
-  test,
   navigateToInventorySystemsFunc,
   navigateToWorkspacesFunc,
 } from './helpers/navHelpers';
@@ -10,6 +9,7 @@ import {
   expectAllRowsHaveText,
   searchByName,
 } from './helpers/filterHelpers';
+import { test } from './helpers/fixtures';
 
 test('User can filter, search and see details of "Ungrouped Hosts" workspace', async ({
   page,
@@ -28,6 +28,7 @@ test('User can filter, search and see details of "Ungrouped Hosts" workspace', a
      - importance: critical
    */
   const ungroupedWorkspaceName: string = 'Ungrouped Hosts';
+
   await test.step('Filter systems by "Ungrouped Hosts" workspace in Systems page', async () => {
     await navigateToInventorySystemsFunc(page);
     await filterSystemsWithConditionalFilter(

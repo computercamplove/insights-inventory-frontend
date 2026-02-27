@@ -2,11 +2,38 @@ import { spawnSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import {
+  MANIFEST_PATH,
+  CENTOS_ARCHIVE,
+  BOOTC_ARCHIVE,
+  EDGE_ARCHIVE,
+  PACKAGE_BASED_ARCHIVE,
+} from './constants';
 
-export const CENTOS_ARCHIVE = 'centos79.tar.gz';
-export const BOOTC_ARCHIVE = 'image-mode-rhel94.tar.gz';
-export const EDGE_ARCHIVE = 'edge-hbi-ui-stage.tar.gz';
-export const PACKAGE_BASED_ARCHIVE = 'rhel94_core_collect.tar.gz';
+/**
+ * Appends archive info to the SHARED manifest for this run.
+ * Uses synchronous append logic to avoid parallel write issues.
+ *  @param entry
+ *  @param entry.archiveName
+ *  @param entry.workingDir
+ */
+function recordToManifest(entry: { archiveName: string; workingDir: string }) {
+  let entries = [];
+
+  // Read existing entries if the file exists
+  if (fs.existsSync(MANIFEST_PATH)) {
+    try {
+      entries = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf-8'));
+    } catch (e) {
+      entries = []; // Handle potential corruption
+    }
+  }
+
+  entries.push(entry);
+
+  // Write back to the single manifest file
+  fs.writeFileSync(MANIFEST_PATH, JSON.stringify(entries, null, 2));
+}
 
 /**
  * Uploads an archive file to the Red Hat ingress API using `curl`.
@@ -73,7 +100,7 @@ export function uploadArchive(archivePath: string) {
   if (result.error) {
     throw new Error(`Failed to execute curl: ${result.error.message}`);
   }
-  if (httpCode !== 201) {
+  if (httpCode !== 201 && httpCode !== 202) {
     const stderrMsg = result.stderr?.toString().trim() || 'Unknown error';
     throw new Error(
       `Upload failed with HTTP code ${httpCode}. stderr: ${stderrMsg}`,
@@ -167,22 +194,9 @@ export function prepareTestArchive(hostArchive: string) {
   if (tarResult.error)
     throw new Error(`Failed to create tar.gz: ${tarResult.error.message}`);
 
-  return { hostname: newHostname, archiveName, workingDir };
-}
+  recordToManifest({ archiveName, workingDir });
 
-/**
- * Deletes a specific test archive and its working folder.
- *
- *
- *  @param {string} archiveName - The archive file to delete inside host_archives.
- *  @param {string} workingDir  - The working folder to remove.
- */
-export function cleanupTestArchive(archiveName: string, workingDir: string) {
-  const archivePath = path.join('host_archives', archiveName);
-  if (fs.existsSync(archivePath)) fs.unlinkSync(archivePath);
-
-  if (fs.existsSync(workingDir))
-    fs.rmSync(workingDir, { recursive: true, force: true });
+  return { hostname: newHostname, archiveName };
 }
 
 /**
@@ -192,7 +206,6 @@ export function cleanupTestArchive(archiveName: string, workingDir: string) {
  *  @returns  {object}             An object containing essential setup details.
  *  @property {string} hostname    The name of the target execution system.
  *  @property {string} archiveName The name of the uploaded archive file.
- *  @property {string} workingDir  The remote directory where the archive was
  */
 export function prepareSingleSystem(
   hostArchive: string = PACKAGE_BASED_ARCHIVE,
@@ -200,4 +213,19 @@ export function prepareSingleSystem(
   const result = prepareTestArchive(hostArchive);
   uploadArchive(result.archiveName);
   return result;
+}
+
+/**
+ * Orchestrates the preparation and upload of 3 test systems.
+ *  @param archives Array of archive filenames (defaults to 3 PACKAGE_BASED_ARCHIVEs)
+ *  @returns        Array of metadata for the 5 prepared systems
+ */
+export async function setupMultipleSystemsParallel(
+  archives: string[] = Array(3).fill(PACKAGE_BASED_ARCHIVE),
+) {
+  // Note: This requires making your other functions async
+  const fleet = await Promise.all(
+    archives.map((archive) => prepareSingleSystem(archive)),
+  );
+  return fleet;
 }
