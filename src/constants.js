@@ -8,13 +8,18 @@ import {
 import InsightsLink from '@redhat-cloud-services/frontend-components/InsightsLink';
 
 export const tagsMapper = (acc, curr) => {
-  let [namespace, keyValue] = curr.split('/');
+  const decoded = decodeURIComponent(curr || '');
+  let [namespace, keyValue] = decoded.split('/');
   if (!keyValue) {
     keyValue = namespace;
     namespace = null;
   }
+  keyValue = decodeURIComponent(keyValue || '');
 
-  const [key, value = null] = keyValue.split('=');
+  const eqIndex = keyValue.indexOf('=');
+  const key = eqIndex >= 0 ? keyValue.slice(0, eqIndex) : keyValue;
+  const value = eqIndex >= 0 ? keyValue.slice(eqIndex + 1) : null;
+
   const currTagKey = acc.findIndex(({ category }) => category === namespace);
   const currTag = acc[currTagKey] || {
     category: namespace,

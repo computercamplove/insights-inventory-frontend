@@ -40,9 +40,13 @@ const useGlobalFilter = () => {
   useEffect(() => {
     chrome.hideGlobalFilter(false);
     const unlisten = chrome.on('GLOBAL_FILTER_UPDATE', ({ data }) => {
-      const [workloads, , tags] = chrome.mapGlobalFilter(data, false, true);
-
-      setGlobalFilter(tags, workloads);
+      try {
+        const [workloads, , tags] = chrome.mapGlobalFilter(data, false, true);
+        setGlobalFilter(tags, workloads);
+      } catch (error) {
+        console.error('Failed to load global filter tags:', error);
+        setGlobalFilter([], {});
+      }
     });
 
     return () => unlisten();

@@ -115,6 +115,34 @@ describe('tagsMapper', () => {
       },
     ]);
   });
+
+  it('decodes URL-encoded tag strings so %3D and %253D display as =', () => {
+    const result = ['ns/key%3Dvalue', 'ns/foo%253Dbar'].reduce(tagsMapper, []);
+
+    expect(result).toEqual([
+      {
+        category: 'ns',
+        key: 'ns',
+        type: 'tags',
+        values: [
+          {
+            group: { label: 'ns', type: 'checkbox', value: 'ns' },
+            key: 'key=value',
+            name: 'key=value',
+            tagKey: 'key',
+            value: 'value',
+          },
+          {
+            group: { label: 'ns', type: 'checkbox', value: 'ns' },
+            key: 'foo=bar',
+            name: 'foo=bar',
+            tagKey: 'foo',
+            value: 'bar',
+          },
+        ],
+      },
+    ]);
+  });
 });
 
 describe('isDate', () => {
