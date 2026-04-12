@@ -61,8 +61,11 @@ The E2E tests are located in the [_playwright-tests/](_playwright-tests/) direct
 
 #### First time setup
 
-1. Copy the example env file (`playwright_example.env`) and create a file named `.env`. For local development only the `BASE_URL` - `https://stage.foo.redhat.com:1337` is required, which is already set in the example config.
-You also need to set the `PLAYWRIGHT_USER` and `PLAYWRIGHT_PASSWORD` for your Stage testing account in the `.env` file.
+1. Copy `playwright_example.env` to `.env` and set the values for your Stage test accounts. The example file lists every variable name (including RBAC-related ones) so you can mirror it in your local `.env`.
+
+   For the usual Playwright run you need `BASE_URL` (the example uses `https://stage.foo.redhat.com:1337`), plus `PLAYWRIGHT_USER` and `PLAYWRIGHT_PASSWORD` for your main Stage testing account.
+
+   To run RBAC tests locally, you also need the dedicated RBAC Stage accounts (see `playwright_example.env`).
 
 2. Install the test runner:
 ```bash
@@ -92,6 +95,7 @@ npx playwright install  --with-deps
 * `npx playwright test test_navigation.test.ts` - run a specific test file
 * `npx playwright test test_navigation.test.ts -g "Test name"` - run a specific test by its name
 * `npx playwright test --grep-invert @integration` - run tests except integration tests
+* `npx playwright test --grep @rbac` - run only E2E RBAC tests
 
 For more examples on how to run and debug tests, visit the [official Playwright documentation](https://playwright.dev/docs/running-tests).
 
