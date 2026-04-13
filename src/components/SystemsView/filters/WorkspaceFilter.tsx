@@ -24,12 +24,15 @@ import {
 import xor from 'lodash/xor';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { getGroupList } from '../../../api/hostInventoryApiTyped';
+import { DEBOUNCE_TIMEOUT_MS } from '../../../constants';
 
 interface WorkspaceFilterProps {
   placeholder?: string;
   value?: string[];
-  onChange?: (event: unknown, value: string[]) => void;
+  onChange?: (event?: React.MouseEvent, values?: string[]) => void;
 }
+
+export const UNGROUPED_ID = 'Ungrouped hosts';
 
 export const WorkspaceFilter = ({
   placeholder,
@@ -38,10 +41,8 @@ export const WorkspaceFilter = ({
 }: WorkspaceFilterProps) => {
   const PAGE_SIZE = 50;
   const INITIAL_VISIBLE_SIZE = PAGE_SIZE;
-  const DEBOUNCE_TIMEOUT = 300;
   const VIEW_MORE_SIZE = PAGE_SIZE;
   const LOADER_ID = 'loader';
-  // TODO plug in access control solution
   const hasAccess = true;
 
   const [isOpen, setIsOpen] = useState(false);
@@ -91,7 +92,9 @@ export const WorkspaceFilter = ({
       }));
 
     return [
-      ...(debouncedSearch ? [] : [{ itemId: '', children: 'Ungrouped hosts' }]),
+      ...(debouncedSearch
+        ? []
+        : [{ itemId: UNGROUPED_ID, children: UNGROUPED_ID }]),
       ...items,
     ];
   }, [data, debouncedSearch]);
@@ -121,7 +124,7 @@ export const WorkspaceFilter = ({
       if (value) {
         setIsOpen(true);
       }
-    }, DEBOUNCE_TIMEOUT);
+    }, DEBOUNCE_TIMEOUT_MS);
   }, []);
 
   useEffect(() => {
@@ -208,7 +211,7 @@ export const WorkspaceFilter = ({
                       hasCheckbox={true}
                       {...option}
                     />
-                    {option.itemId === '' && <Divider />}
+                    {option.itemId === UNGROUPED_ID && <Divider />}
                   </Fragment>
                 );
               })}

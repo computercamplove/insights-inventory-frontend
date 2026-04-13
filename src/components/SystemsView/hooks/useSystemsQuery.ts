@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { getHostList, getHostTags } from '../../../api/hostInventoryApiTyped';
 import { InventoryFilters } from '../filters/SystemsViewFilters';
 import {
@@ -8,6 +8,8 @@ import {
 import qs from 'qs';
 import { ApiHostGetHostListOrderByEnum as ApiOrderByEnum } from '@redhat-cloud-services/host-inventory-client/ApiHostGetHostList';
 import { SortDirection } from '../SystemsView';
+import { buildOperatingSystemProfileFilter } from '../utils/operatingSystemSelectOptions';
+import { buildWorkloadsFilter } from '../utils/workloadsFilter';
 
 const serializeSystemType = (values: string[]) => {
   const validValues = Object.values(ApiHostGetHostListSystemTypeEnum);
@@ -37,8 +39,22 @@ const fetchSystems = async ({
   sortBy,
   direction,
 }: FetchSystemsParams) => {
+  const operatingSystemFilter = buildOperatingSystemProfileFilter(
+    filters.operating_system,
+  );
+  const workloadsFilter = buildWorkloadsFilter(filters.workloads);
+
+  const systemProfileFilter: Record<string, unknown> = {
+    ...(filters?.rhcStatus?.length && {
+      rhc_client_id: filters.rhcStatus,
+    }),
+    ...(operatingSystemFilter && { operating_system: operatingSystemFilter }),
+    ...(workloadsFilter && { workloads: workloadsFilter }),
+  };
+
+  const hasSystemProfileFilter = Object.keys(systemProfileFilter).length > 0;
+
   const params: ApiHostGetHostListParams = {
-    tags: [],
     page,
     perPage,
     ...(sortBy && { orderBy: sortBy }),
@@ -50,6 +66,7 @@ const fetchSystems = async ({
       systemType: serializeSystemType(filters.system_type),
     }),
     ...(filters?.workspace && { groupName: filters.workspace }),
+    ...(filters?.tags && { tags: filters.tags }),
     ...(filters?.last_seen && {
       lastCheckInStart: filters.last_seen?.start,
       lastCheckInEnd: filters.last_seen?.end,
@@ -70,11 +87,9 @@ const fetchSystems = async ({
             'host_type',
           ],
         },
-        ...(filters?.rhcStatus && {
+        ...(hasSystemProfileFilter && {
           filter: {
-            system_profile: {
-              rhc_client_id: filters.rhcStatus,
-            },
+            system_profile: systemProfileFilter,
           },
         }),
       },
@@ -121,6 +136,7 @@ export const useSystemsQuery = ({
     queryFn: async () => {
       return await fetchSystems({ page, perPage, filters, sortBy, direction });
     },
+    placeholderData: keepPreviousData,
     refetchOnWindowFocus: false,
     enabled,
   });

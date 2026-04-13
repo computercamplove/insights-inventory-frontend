@@ -4,6 +4,7 @@ import {
   HOST_GROUP_CHIP,
   RHCD_FILTER_KEY,
   UPDATE_METHOD_KEY,
+  WORKLOAD_FILTER_KEY,
 } from './Utilities/constants';
 import InsightsLink from '@redhat-cloud-services/frontend-components/InsightsLink';
 
@@ -171,6 +172,7 @@ export const getSearchParams = (searchParams) => {
   const perPage = searchParams.get('per_page');
   const lastSeenFilter = searchParams.getAll('last_seen');
   const systemTypeFilter = searchParams.getAll('system_type');
+  const workloadFilter = searchParams.getAll(WORKLOAD_FILTER_KEY);
   const sortBy = {
     key: searchParams.get('sort')?.replace('-', ''),
     direction: searchParams.get('sort')?.includes('-') ? 'desc' : 'asc',
@@ -190,6 +192,7 @@ export const getSearchParams = (searchParams) => {
     hostGroupFilter,
     systemTypeFilter,
     sortBy,
+    workloadFilter,
   };
 };
 
@@ -321,12 +324,14 @@ export const TAB_REQUIRED_PERMISSIONS = {
 // Kessel access-check API (see PR 2919 / useHostIdsWithKessel)
 export const KESSEL_API_PATH = '/api/kessel/v1beta2';
 export const HOST_RESOURCE_TYPE = 'host';
+export const HOST_RESOURCE_TYPE_VIEW = 'view';
 export const HOST_RESOURCE_TYPE_UPDATE = 'update';
 export const HOST_RESOURCE_TYPE_DELETE = 'delete';
 export const PER_PAGE_MAX = 100;
 export const PER_PAGE = 50;
 export const INITIAL_PAGE = 1;
 export const EMPTY_CELL = '';
+export const DEBOUNCE_TIMEOUT_MS = 300;
 export const WORKSPACE_RESOURCE_TYPE = 'workspace';
 export const WORKSPACE_RELATION_EDIT = 'edit';
 /** Reporter for host access checks (HBI). */
