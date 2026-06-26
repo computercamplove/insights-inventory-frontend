@@ -271,13 +271,19 @@ You also need to set the following variables in the <code>.env</code> file:</p>
 <li><code>npx playwright test</code> - run the complete playwright test suite</li>
 <li><code>npx playwright test --headed</code> -  run the complete suite in a vnc-like browser so you can watch its interactions</li>
 <li><code>npx playwright test test_navigation.test.ts</code> - run a specific test file</li>
-<li><code>npx playwright test test_navigation.test.ts -g &quot;Test name&quot;</code> - run a specific test by its name</li>
+<li><code>npx playwright test -g &quot;Test name&quot;</code> - run a specific test by its name</li>
 <li><code>npx playwright test --grep-invert @integration</code> - run tests except integration tests</li>
 <li><code>npx playwright test --grep @rbac</code> - run only E2E RBAC tests</li>
 <li><code>SYSTEMS_VIEW=true npx playwright test</code> - run the complete playwright test suite with enabled <code>SystemsView</code> and <code>Kessel</code> components</li>
 <li><code>INVENTORY_VIEWS=true npx playwright test</code> - run the complete playwright test suite with enabled <code>Inventory Views</code> components</li>
 </ul>
 <p>For more examples on how to run and debug tests, visit the <a href="https://playwright.dev/docs/running-tests">official Playwright documentation</a>.</p>
+<h4>Parallel vs serial tests</h4>
+<p>Tests run in parallel by default with 4 workers in CI. For tests that modify shared state, use serial mode <code>test.describe.configure({ mode: 'serial' });</code>.
+Local testing:</p>
+<pre class="prettyprint source lang-bash"><code># Run with 2 workers locally
+npx playwright test --workers=2
+</code></pre>
 <h3>Integration Testing: Federated Modules</h3>
 <p>Integration tests ensure our federated modules work correctly within Lightspeed applications at runtime. Run these whenever you modify components shared across services to prevent breaking downstream consumers:
 <code>npx playwright test --grep @integration</code></p>
