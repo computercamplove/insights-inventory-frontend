@@ -3,6 +3,7 @@ import {
   filterSystemsWithConditionalFilter,
   searchByName,
   waitForTableKebabReady,
+  ToolbarFilterHelper,
 } from '../filterHelpers';
 import {
   deleteSystemModal,
@@ -54,6 +55,8 @@ export type SystemsPage = {
   bulkSelect: BulkSelect;
   bulkDeleteButton: Locator;
   export: SystemsExport;
+  /** Asserts against the toolbar's applied-filter chip groups, e.g. filters.verifyFilterApplied('Operating system', 'RHEL 9.6'). */
+  filters: ToolbarFilterHelper;
   /** Applies a conditional filter, e.g. filterBy('Workspace', 'My Workspace'). */
   filterBy: (filterName: string, option: string) => Promise<void>;
   /** Filters the table via the "Filter by name" input (reloads the page first). */
@@ -180,6 +183,7 @@ export function systemsExport(page: Page): SystemsExport {
  * await systems.bulkSelect.selectPage();
  * await systems.bulkDelete();
  * await systems.export.toJson();
+ * await systems.filters.verifyFilterValues('Operating system', ['RHEL 9.6', 'RHEL 9.4']);
  */
 export function systemsPage(page: Page): SystemsPage {
   const root = page.locator('[data-ouia-component-id="systems-view"]');
@@ -201,6 +205,7 @@ export function systemsPage(page: Page): SystemsPage {
     bulkSelect: bulkSelect(page),
     bulkDeleteButton,
     export: systemsExport(page),
+    filters: new ToolbarFilterHelper(page),
 
     async filterBy(filterName, option) {
       await filterSystemsWithConditionalFilter(page, filterName, option);

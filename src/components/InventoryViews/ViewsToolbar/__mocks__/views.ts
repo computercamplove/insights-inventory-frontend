@@ -7,7 +7,7 @@ import {
 export const MOCK_VIEWS: ViewOut[] = [
   {
     id: ALL_SYSTEMS_VIEW_ID,
-    name: 'All systems',
+    name: 'All Systems',
     description: 'Default view showing all inventory systems',
     is_system_view: true,
     org_id: 'org-123',

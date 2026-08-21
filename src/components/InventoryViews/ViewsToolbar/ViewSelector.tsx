@@ -27,7 +27,7 @@ const ViewSelector = ({
   const [isOpen, setIsOpen] = useState(false);
 
   const activeView = views.find((v) => v.id === activeViewId);
-  const toggleLabel = activeView?.name ?? 'All systems';
+  const toggleLabel = activeView?.name ?? 'All Systems';
 
   const { allSystemsView, userViews, systemViews } = views.reduce<{
     allSystemsView: ViewOut | undefined;
@@ -62,6 +62,7 @@ const ViewSelector = ({
       onClick={onToggleClick}
       isExpanded={isOpen}
       aria-label="Select a view"
+      data-testid="manage-view-select-view"
     >
       {toggleLabel}
     </MenuToggle>
@@ -74,6 +75,7 @@ const ViewSelector = ({
       onSelect={onSelect}
       onOpenChange={(open) => setIsOpen(open)}
       toggle={toggle}
+      data-testid="manage-view-select-view-dropdown"
       shouldFocusToggleOnSelect
     >
       <SelectList>

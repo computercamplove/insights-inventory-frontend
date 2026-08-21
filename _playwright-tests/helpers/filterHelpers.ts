@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { test, expect } from '@playwright/test';
 import { type Locator, type Page } from '@playwright/test';
 import { isLegacyInventoryTableEnabled } from './constants';
@@ -259,3 +260,60 @@ export const parseLastSeenToDays = (text: string): number => {
   // Default: return -1 to indicate unknown format
   return -1;
 };
+
+export class ToolbarFilterHelper {
+  readonly page: Page;
+  readonly filterToolbarGroup: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.filterToolbarGroup = page.locator('.pf-v6-c-toolbar__group');
+  }
+
+  /**
+   * Validates that a specific filter category and its active value exist in the toolbar chips.
+   * Example: await verifyFilterApplied('Status', 'Stale');
+   */
+  async verifyFilterApplied(category: string, value: string): Promise<void> {
+    const categoryGroup = this.filterToolbarGroup
+      .locator('.pf-v6-c-label-group')
+      .filter({
+        has: this.page.locator('.pf-v6-c-label-group__label', { hasText: category }),
+      });
+
+    await expect(categoryGroup).toBeVisible();
+
+    const chipValue = categoryGroup.locator('.pf-v6-c-label__text', {
+      hasText: value,
+    });
+
+    await expect(chipValue).toBeVisible();
+  }
+
+  /**
+   * Validates that every given value is present as a chip within a single filter category.
+   * Example: await verifyFilterValues('Operating system', ['RHEL 9.6', 'RHEL 9.4']);
+   */
+  async verifyFilterValues(category: string, values: string[]): Promise<void> {
+    for (const value of values) {
+      await this.verifyFilterApplied(category, value);
+    }
+  }
+
+  /**
+   * Validates multiple active filters in one call. Each category maps to either
+   * a single expected value or an array of expected values.
+   * Example: await verifyFiltersApplied({ 'Operating system': ['RHEL 9.6', 'RHEL 9.4'], 'Status': 'Stale' });
+   */
+  async verifyFiltersApplied(
+    expectedFilters: Record<string, string | string[]>,
+  ): Promise<void> {
+    for (const [category, value] of Object.entries(expectedFilters)) {
+      if (Array.isArray(value)) {
+        await this.verifyFilterValues(category, value);
+      } else {
+        await this.verifyFilterApplied(category, value);
+      }
+    }
+  }
+}

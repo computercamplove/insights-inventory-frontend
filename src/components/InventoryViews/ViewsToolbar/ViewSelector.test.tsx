@@ -20,7 +20,7 @@ describe('ViewSelector', () => {
   it('should render the active view name in the toggle', () => {
     renderViewSelector();
 
-    expect(screen.getByText('All systems')).toBeInTheDocument();
+    expect(screen.getByText('All Systems')).toBeInTheDocument();
   });
 
   it('should show dropdown options when clicked', async () => {

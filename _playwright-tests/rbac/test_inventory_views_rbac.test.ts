@@ -1,8 +1,8 @@
 import { expect } from '@playwright/test';
 import { test } from '../helpers/fixtures';
 import { navigateToInventorySystemsFunc } from '../helpers/navHelpers';
-import { columnManagementModal } from '../helpers/columnManagementModal';
-import { vulnerabilityColumns } from '../helpers/columnHelpers';
+import { columnManagementModal } from '../helpers/views/columnManagementModal';
+import { vulnerabilityColumns } from '../helpers/views/columnHelpers';
 
 test.use({ storageState: '.auth/viewer_user.json' });
 
@@ -10,18 +10,13 @@ test.describe(
   'Inventory Views per-service RBAC',
   { tag: ['@inventory-views'] },
   () => {
-    test.describe.configure({ retries: 3 });
-
-    test('denied columns show lock icons in table cells', async ({
-      page,
-      systems,
-    }) => {
-      await page.addInitScript(() => {
-        localStorage.setItem('ui.inventory-views', 'true');
-      });
-
+    test.beforeEach(async ({ page }) => {
       await navigateToInventorySystemsFunc(page);
+    });
 
+    test('User without Vulnerability permissions sees lock icons in table vulnerability cells', async ({
+      page,
+    }) => {
       const modal = columnManagementModal(page);
       await modal.open();
       for (const col of vulnerabilityColumns) {
@@ -36,16 +31,9 @@ test.describe(
       await expect(lockCells.first()).toBeVisible();
     });
 
-    test('column modal shows lock icons for denied columns', async ({
+    test('User without Vulnerability permissions sees lock icons for denied columns', async ({
       page,
-      systems,
     }) => {
-      await page.addInitScript(() => {
-        localStorage.setItem('ui.inventory-views', 'true');
-      });
-
-      await navigateToInventorySystemsFunc(page);
-
       const modal = columnManagementModal(page);
       await modal.open();
 
@@ -57,13 +45,9 @@ test.describe(
       await modal.cancel();
     });
 
-    test('denied columns cannot be sorted', async ({ page, systems }) => {
-      await page.addInitScript(() => {
-        localStorage.setItem('ui.inventory-views', 'true');
-      });
-
-      await navigateToInventorySystemsFunc(page);
-
+    test('User without Vulnerability permissions cannot sort Vulnerability columns', async ({
+      page,
+    }) => {
       const modal = columnManagementModal(page);
       await modal.open();
       await modal.enableColumn('Total CVEs');

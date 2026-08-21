@@ -1,11 +1,12 @@
 import { expect } from '@playwright/test';
 import { type Page, type Locator } from '@playwright/test';
-import { parseLastSeenToDays } from './filterHelpers';
+import { parseLastSeenToDays } from '../filterHelpers';
 import { columnManagementModal } from './columnManagementModal';
 
 export { columnManagementModal } from './columnManagementModal';
 
 const NOT_AVAILABLE = '--';
+export const COLUMN_LOCATOR = 'th';
 
 // Default columns from inventory/columnDefinitions.tsx
 export const defaultInventoryColumns = [
@@ -15,6 +16,9 @@ export const defaultInventoryColumns = [
   'OS',
   'Last seen',
 ];
+
+// Default columns for All systems view (system view), Tags currently is not included
+export const allSystemsColumns = ['Name', 'Workspace', 'OS', 'Last seen'];
 // Total columns includes checkbox (first) and per-row actions (last)
 export const totalDefaultColumns = defaultInventoryColumns.length + 2;
 

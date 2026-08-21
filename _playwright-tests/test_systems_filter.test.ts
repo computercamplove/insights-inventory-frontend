@@ -10,7 +10,7 @@ import {
   isInventoryViewsEnabled,
   isLegacyInventoryTableEnabled,
 } from './helpers/constants';
-import { scrollColumnIntoView } from './helpers/columnHelpers';
+import { scrollColumnIntoView } from './helpers/views/columnHelpers';
 import { systemsPage } from './helpers/systems/systemsPage';
 import { tagsModal } from './helpers/systems/systemsModals';
 
