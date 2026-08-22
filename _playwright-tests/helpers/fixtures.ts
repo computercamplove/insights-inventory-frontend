@@ -21,8 +21,8 @@ type SystemsTestData = {
  * Data provided by the workspaceWithSystem fixture.
  */
 export type WorkspaceWithSystemFixture = {
-  workspaceId: string;
-  workspaceName: string;
+  id: string;
+  name: string;
   system: System;
   hostId: string;
 };
@@ -86,8 +86,8 @@ export const test = base.extend<{
 
     // Provide fixture data to test
     await use({
-      workspaceId,
-      workspaceName: WORKSPACE_WITH_SYSTEMS,
+      id: workspaceId,
+      name: WORKSPACE_WITH_SYSTEMS,
       system,
       hostId,
     });

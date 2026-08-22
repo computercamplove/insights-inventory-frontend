@@ -1,20 +1,18 @@
+/* eslint-disable playwright/no-wait-for-selector */
 import { expect } from '@playwright/test';
 import { test } from './helpers/fixtures';
 import { navigateToInventorySystemsFunc } from './helpers/navHelpers';
-import {
-  filterSystemsWithConditionalFilter,
-  assertAllContain,
-  parseLastSeenToDays,
-} from './helpers/filterHelpers';
+import { assertAllContain, parseLastSeenToDays } from './helpers/filterHelpers';
 import { closePopupsIfExist } from './helpers/loginHelpers';
 import {
   BASE_ARCHIVE_TAG_COUNT,
   TAG,
-  isSystemsViewEnabled,
   isInventoryViewsEnabled,
   isLegacyInventoryTableEnabled,
 } from './helpers/constants';
 import { scrollColumnIntoView } from './helpers/columnHelpers';
+import { systemsPage } from './helpers/systems/systemsPage';
+import { tagsModal } from './helpers/systems/systemsModals';
 
 test.describe('Filtering Systems Tests', { tag: ['@systems-table'] }, () => {
   const operatingSystemTestCases = [
@@ -25,54 +23,30 @@ test.describe('Filtering Systems Tests', { tag: ['@systems-table'] }, () => {
   test.beforeEach(async ({ page }) => {
     await closePopupsIfExist(page);
     await navigateToInventorySystemsFunc(page);
-    const resetFiltersButton = page
-      .getByRole('button', { name: 'Reset filters' })
-      .or(page.getByRole('button', { name: 'Clear filters' }));
-    if (await resetFiltersButton.isVisible({ timeout: 100 })) {
-      await resetFiltersButton.click();
-    }
+    await systemsPage(page).clearFilters();
   });
 
-  test('User can filter systems by System type', async ({ page }) => {
-    /**
-     * Metadata:
-       - requirements:
-       - inv-hosts-filter-by-system_type
-       - importance: critical
-     */
+  test('User filters systems by System type', async ({ page }) => {
+    const systemsTable = systemsPage(page);
     const imageIconAriaLabel = 'Image mode icon';
     const packageIconAriaLabel = 'Package mode icon';
     const imageIcons = page.locator(`[aria-label="${imageIconAriaLabel}"]`);
     const packageIcons = page.locator(`[aria-label="${packageIconAriaLabel}"]`);
 
-    await test.step('Package-based system option', async () => {
-      await filterSystemsWithConditionalFilter(
-        page,
-        'System type',
-        'Package-based system',
-      );
+    await test.step('Filters by Package-based system option', async () => {
+      await systemsTable.filterBy('System type', 'Package-based system');
       await expect(imageIcons).toHaveCount(0);
       const packageCount = await packageIcons.count();
-      expect(packageCount).toBeGreaterThanOrEqual(0);
+      expect(packageCount).toBeGreaterThan(0);
     });
 
-    await test.step('Image-based system option', async () => {
-      // Reset previews filter
-      const resetFiltersButton = page
-        .getByRole('button', { name: 'Reset filters' })
-        .or(page.getByRole('button', { name: 'Clear filters' }));
-      if (await resetFiltersButton.isVisible({ timeout: 100 })) {
-        await resetFiltersButton.click();
-      }
+    await test.step('Filters by Image-based system option', async () => {
+      await systemsTable.clearFilters();
 
-      await filterSystemsWithConditionalFilter(
-        page,
-        'System type',
-        'Image-based system',
-      );
+      await systemsTable.filterBy('System type', 'Image-based system');
       await expect(packageIcons).toHaveCount(0);
       const imageCount = await imageIcons.count();
-      expect(imageCount).toBeGreaterThanOrEqual(0);
+      expect(imageCount).toBeGreaterThan(0);
 
       await expect(
         page.getByRole('button', { name: 'View by systems' }),
@@ -80,51 +54,34 @@ test.describe('Filtering Systems Tests', { tag: ['@systems-table'] }, () => {
     });
   });
 
-  test('User can filter systems by workspace', async ({
+  test('User filters systems by workspace', async ({
     page,
     workspaceWithSystem,
   }) => {
-    /**
-     * Metadata:
-       - requirements:
-       - inv-hosts-filter-by-group_id
-       - importance: critical
-     */
-    await filterSystemsWithConditionalFilter(
-      page,
-      'Workspace',
-      workspaceWithSystem.workspaceName,
-    );
-    const workspaceCellWithValue = page
+    await systemsPage(page).filterBy('Workspace', workspaceWithSystem.name);
+
+    const workspaceCell = page
       .locator('td[data-label="Workspace"]', {
-        hasText: workspaceWithSystem.workspaceName,
+        hasText: workspaceWithSystem.name,
       })
       .or(
         page.locator(
           'td[data-ouia-component-id^="systems-view-table-td-"][data-ouia-component-id$="-1"]',
           {
-            hasText: workspaceWithSystem.workspaceName,
+            hasText: workspaceWithSystem.name,
           },
         ),
       );
-    await expect(workspaceCellWithValue.first()).toBeVisible();
-    const count = await workspaceCellWithValue.count();
-    await expect(workspaceCellWithValue).toHaveText(
-      Array(count).fill(workspaceWithSystem.workspaceName),
+    await expect(workspaceCell.first()).toBeVisible();
+    const count = await workspaceCell.count();
+    await expect(workspaceCell).toHaveText(
+      Array(count).fill(workspaceWithSystem.name),
     );
   });
 
-  test('User can filter systems by OS major version option', async ({
-    page,
-  }) => {
-    /**
-     * Metadata:
-       - requirements:
-       - inv-hosts-filter-by-os
-       - importance: critical
-     */
+  test('User filters systems by OS major version option', async ({ page }) => {
     const OS = 'RHEL 9';
-    await filterSystemsWithConditionalFilter(page, 'Operating system', OS);
+    await systemsPage(page).filterBy('Operating system', OS);
 
     // Verify all filter chips contain Major version OS RHEL 9
     const filterChipGroup = page.locator('span.pf-v6-c-label__text');
@@ -146,24 +103,14 @@ test.describe('Filtering Systems Tests', { tag: ['@systems-table'] }, () => {
   });
 
   operatingSystemTestCases.forEach((testData) => {
-    test(`User should be able to filter by OS version: ${testData.OS}`, async ({
+    test(`User filters systems by OS version: ${testData.OS}`, async ({
       page,
     }) => {
-      /**
-       * Metadata:
-       * - requirements: inv-hosts-filter-by-os
-       * - importance: critical
-       */
-
-      await test.step('Apply Operating system filter', async () => {
-        await filterSystemsWithConditionalFilter(
-          page,
-          'Operating system',
-          testData.OS,
-        );
+      await test.step('Applies Operating system filter', async () => {
+        await systemsPage(page).filterBy('Operating system', testData.OS);
       });
 
-      await test.step('Verify filtered results show correct OS', async () => {
+      await test.step('Shows filtered results with correct OS', async () => {
         const columnVersionOS = page
           .locator('td[data-label="OS"]', { hasText: testData.OS })
           .or(
@@ -181,17 +128,13 @@ test.describe('Filtering Systems Tests', { tag: ['@systems-table'] }, () => {
     });
   });
 
-  test('User can filter systems by Tags', async ({ page }) => {
-    /**
-     * Metadata:
-       - requirements:
-       - inv-hosts-filter-by-tags
-       - importance: critical
-     */
+  test('User filters systems by Tags', async ({ page }) => {
+    const systemsTable = systemsPage(page);
     const tagOption = `${TAG.name}=${TAG.value}`;
 
-    await test.step('Filter systems by tag', async () => {
-      await filterSystemsWithConditionalFilter(page, 'Tags', tagOption);
+    await test.step('Filters systems by tag', async () => {
+      await systemsTable.filterBy('Tags', tagOption);
+
       const tagsRows = page.locator(
         '[data-ouia-component-id="TagCount-text"]',
         {
@@ -205,7 +148,7 @@ test.describe('Filtering Systems Tests', { tag: ['@systems-table'] }, () => {
       );
     });
 
-    await test.step('Verify Tags Modal has expected tag', async () => {
+    await test.step('Sees expected tag in Tags modal', async () => {
       // TODO: Remove when RHINENG-22581 is fixed
       const inputLocator = isLegacyInventoryTableEnabled
         ? page.getByPlaceholder('Filter by tags').nth(1)
@@ -213,10 +156,7 @@ test.describe('Filtering Systems Tests', { tag: ['@systems-table'] }, () => {
       await inputLocator.fill('');
 
       // get name of system we check the tags to verify tags modal title
-      const nameCell = page
-        .locator('[data-ouia-component-id="systems-view-table-td-0-0"]')
-        .or(page.locator('td[data-label="Name"]'))
-        .first();
+      const nameCell = systemsTable.nameCell.first();
       await nameCell.waitFor({ state: 'visible' });
       const expectedSystemName = await nameCell.innerText();
 
@@ -229,144 +169,91 @@ test.describe('Filtering Systems Tests', { tag: ['@systems-table'] }, () => {
       }
 
       await tagButton.first().click();
-      const dialog = page.locator('[role="dialog"]');
+      const modal = tagsModal(page);
       // Title of the modal should be the name + tags count of clicked system
       const tagModalTitle = `${expectedSystemName} (${BASE_ARCHIVE_TAG_COUNT})`;
-      await expect(
-        dialog.getByRole('heading', { name: tagModalTitle }),
-      ).toBeVisible({
+      await expect(modal.heading(tagModalTitle)).toBeVisible({
         timeout: 10000,
       });
+
       // search for expected tag
-      const inputLocatorDialog = page.getByPlaceholder('Filter tags');
-      await inputLocatorDialog.fill(TAG.value);
-      await expect(
-        dialog.locator('td[data-label="Name"]').or(dialog.locator('td').nth(0)),
-      ).toHaveText(TAG.name);
-      await expect(
-        dialog
-          .locator('td[data-label="Value"]')
-          .or(dialog.locator('td').nth(1)),
-      ).toHaveText(TAG.value);
-      await expect(
-        dialog
-          .locator('td[data-label="Tag source"]')
-          .or(dialog.locator('td').nth(2)),
-      ).toHaveText(TAG.tagSource);
+      await modal.filterByTag(TAG.value);
+      await expect(modal.nameCell).toHaveText(TAG.name);
+      await expect(modal.valueCell).toHaveText(TAG.value);
+      await expect(modal.tagSourceCell).toHaveText(TAG.tagSource);
     });
   });
 
-  test('User can filter systems by Last seen: Within the last 24 hours', async ({
-    page,
-  }) => {
-    /**
-     * Jira References:
-     * - https://issues.redhat.com/browse/RHINENG-20810 – Filter systems by Last seen
-     * Metadata:
-     * - requirements: inv-hosts-filter-by-last_seen
-     * - importance: high
-     *
-     * Note: Only testing "Within the last 24 hours" filter as active test systems
-     * reliably check in within this window. Other staleness filters (>1d, >7d, etc.)
-     * require systems with controlled last-seen timestamps which the test environment
-     * cannot guarantee.
-     */
-
-    await test.step('Apply Last seen filter', async () => {
-      // Close any existing Last seen filter chip
-      const closeChipButton = page.locator(
-        'button[aria-label^="Close"][aria-label*="days ago"]',
-      );
-      if (await closeChipButton.first().isVisible({ timeout: 2000 })) {
-        await closeChipButton.first().click();
-        // Wait for skeleton table to disappear after chip removal
-        await page
-          .locator('[data-ouia-component-id="SkeletonTable"]')
-          .waitFor({ state: 'hidden', timeout: 10000 });
-      }
-
-      // Open conditional filter dropdown and select "Last seen"
-      await page
-        .locator(
-          '[data-ouia-component-id="DataViewFilters"] button.pf-v6-c-menu-toggle',
-        )
-        .or(page.getByRole('button', { name: 'Conditional filter toggle' }))
-        .click();
-      await page.getByRole('menuitem', { name: 'Last seen' }).click();
-
-      // Click the "Filter by last seen" button to open options
-      const lastSeenToggle = page.locator('button', {
-        hasText: 'Filter by last seen',
+  test(
+    'User filters systems by Last seen: Within the last 24 hours',
+    {
+      annotation: [
+        {
+          type: 'jira',
+          description: 'https://issues.redhat.com/browse/RHINENG-20810',
+        },
+        {
+          type: 'note',
+          description:
+            'Only testing "Within the last 24 hours" filter as active test systems ' +
+            'reliably check in within this window. Other staleness filters (>1d, >7d, etc.) ' +
+            'require systems with controlled last-seen timestamps which the test environment ' +
+            'cannot guarantee.',
+        },
+      ],
+    },
+    async ({ page }) => {
+      await test.step('Applies Last seen filter', async () => {
+        await systemsPage(page).filterBy(
+          'Last seen',
+          'Within the last 24 hours',
+        );
       });
-      await expect(lastSeenToggle).toBeVisible({ timeout: 10000 });
-      await lastSeenToggle.click();
 
-      // Wait for dropdown listbox to be visible
-      const option = page
-        .getByRole('option', { name: 'Within the last 24 hours' })
-        .first();
-      await expect(option).toBeVisible({ timeout: 5000 });
-      await option.scrollIntoViewIfNeeded();
-      await option.click();
-
-      // Wait for skeleton table to disappear after filter applied
-      await page
-        .locator('[data-ouia-component-id="SkeletonTable"]')
-        .waitFor({ state: 'hidden', timeout: 10000 });
-    });
-
-    await test.step('Verify filter chip is displayed', async () => {
-      const filterChip = page.locator('span.pf-v6-c-label__text', {
-        hasText: 'Within the last 24 hours',
+      await test.step('Table displays filter chip', async () => {
+        const filterChip = page.locator('span.pf-v6-c-label__text', {
+          hasText: 'Within the last 24 hours',
+        });
+        await expect(filterChip).toBeVisible({ timeout: 10000 });
       });
-      await expect(filterChip).toBeVisible({ timeout: 10000 });
-    });
 
-    await test.step('Verify URL contains correct filter parameter', async () => {
-      if (!isSystemsViewEnabled) {
+      await test.step('Table displays filtered results', async () => {
+        await page.waitForSelector('.loading-spinner', {
+          state: 'hidden',
+          timeout: 10000,
+        });
+
+        const tableRows = page.locator('table tbody tr');
         await expect(async () => {
-          const url = page.url();
-          expect(url).toContain('last_seen=last24');
-        }).toPass({ timeout: 5000 });
-      }
-    });
-
-    await test.step('Verify table shows filtered results', async () => {
-      await page.waitForSelector('.loading-spinner', {
-        state: 'hidden',
-        timeout: 10000,
+          const rowCount = await tableRows.count();
+          expect(
+            rowCount,
+            'Expected systems within last 24 hours - active test systems should exist',
+          ).toBeGreaterThan(0);
+        }).toPass({ timeout: 10000 });
       });
 
-      const tableRows = page.locator('table tbody tr');
-      await expect(async () => {
-        const rowCount = await tableRows.count();
-        expect(
-          rowCount,
-          'Expected systems within last 24 hours - active test systems should exist',
-        ).toBeGreaterThan(0);
-      }).toPass({ timeout: 10000 });
-    });
+      await test.step('Table shows Last seen values within 24 hours', async () => {
+        const lastSeenCells = page.locator(
+          'table tbody tr td[data-label="Last seen"]',
+        );
+        const cellCount = await lastSeenCells.count();
 
-    await test.step('Verify Last seen column values are within 24 hours', async () => {
-      const lastSeenCells = page.locator(
-        'table tbody tr td[data-label="Last seen"]',
-      );
-      const cellCount = await lastSeenCells.count();
+        for (let i = 0; i < cellCount; i++) {
+          const cellText = await lastSeenCells.nth(i).textContent();
+          expect(
+            cellText,
+            `Row ${i + 1} should have Last seen text`,
+          ).toBeTruthy();
 
-      for (let i = 0; i < cellCount; i++) {
-        const cellText = await lastSeenCells.nth(i).textContent();
-        expect(
-          cellText,
-          `Row ${i + 1} should have Last seen text`,
-        ).toBeTruthy();
-
-        const days = parseLastSeenToDays(cellText!);
-        // "Within the last 24 hours" means 0 days (hours/minutes/seconds ago)
-        expect(
-          days,
-          `Row ${i + 1}: "${cellText}" should be within 24 hours (0 days), got ${days} days`,
-        ).toBe(0);
-      }
-    });
-  });
+          const days = parseLastSeenToDays(cellText!);
+          // "Within the last 24 hours" means 0 days (hours/minutes/seconds ago)
+          expect(
+            days,
+            `Row ${i + 1}: "${cellText}" should be within 24 hours (0 days), got ${days} days`,
+          ).toBe(0);
+        }
+      });
+    },
+  );
 });

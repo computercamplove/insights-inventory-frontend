@@ -2,149 +2,112 @@ import { expect } from '@playwright/test';
 import { createSystem } from './helpers/uploadArchive';
 import { navigateToInventorySystemsFunc } from './helpers/navHelpers';
 import { test } from './helpers/fixtures';
-import { searchByName, waitForTableKebabReady } from './helpers/filterHelpers';
-import { isSystemsViewEnabled } from './helpers/constants';
+import { systemsPage } from './helpers/systems/systemsPage';
 
-test.describe('System CRUD', { tag: ['@systems-table'] }, () => {
-  test.describe.configure({ mode: 'serial' });
+const NOT_FOUND = 'No matching systems found';
 
-  test('User should be able to edit and delete a system from Systems page', async ({
-    page,
-  }) => {
-    /**
-     * Jira References:
-       - https://issues.redhat.com/browse/RHINENG-21147 – Edit a system
-       - https://issues.redhat.com/browse/RHINENG-21149 - Delete a system
-     * Metadata:
-       - requirements:
-       - inv-hosts-patch
-       - inv-hosts-delete-by-id
-       - importance: critical
-     */
-    const system = await createSystem();
-    const newDisplayName = `${system.hostname}_Renamed`;
-    const dialog = page.locator('[role="dialog"]');
-    const nameCell = page
-      .locator('[data-ouia-component-id="systems-view-table-td-0-0"]')
-      .or(page.locator('td[data-label="Name"]'));
+test.describe(
+  'System CRUD',
+  {
+    tag: ['@systems-table'],
+    annotation: [
+      {
+        type: 'jira',
+        description: 'https://issues.redhat.com/browse/RHINENG-21147',
+      },
+      {
+        type: 'jira',
+        description: 'https://issues.redhat.com/browse/RHINENG-21149',
+      },
+      {
+        type: 'jira',
+        description: 'https://issues.redhat.com/browse/RHINENG-21148 ',
+      },
+    ],
+  },
+  () => {
+    test.describe.configure({ mode: 'serial' });
 
-    await test.step('Navigate to Inventory → Systems', async () => {
+    test.beforeEach(async ({ page }) => {
       await navigateToInventorySystemsFunc(page);
     });
 
-    await test.step(`Edit the system "${system.hostname}" display name and save`, async () => {
-      await searchByName(page, system.hostname);
-      await expect(nameCell).toHaveCount(1, { timeout: 10000 });
-      const kebab = await waitForTableKebabReady(
-        page,
-        new RegExp(system.hostname, 'i'),
-      );
-      await kebab.click();
-      await expect(kebab).toHaveAttribute('aria-expanded', 'true');
+    test(
+      'User edits and deletes a system from the Systems page',
+      {},
+      async ({ page }) => {
+        const system = await createSystem();
+        const newDisplayName = `${system.hostname}_Renamed`;
+        const systemsTable = systemsPage(page);
 
-      const editButton = page.getByRole('menuitem', { name: /^Edit/ }).first();
-      await expect(editButton).toBeEnabled({
-        enabled: isSystemsViewEnabled || undefined,
-        timeout: 50000,
-      });
-      await editButton.click();
-      await expect(dialog).toBeVisible();
+        await test.step(`Edits the system "${system.hostname}" display name`, async () => {
+          await systemsTable.searchByName(system.hostname);
+          await expect(systemsTable.nameCell).toHaveCount(1, {
+            timeout: 10000,
+          });
 
-      await expect(page.getByRole('textbox')).toHaveValue(system.hostname);
-      await dialog.locator('input').first().fill(newDisplayName);
-      await dialog.getByRole('button', { name: 'Save' }).click();
-    });
+          await systemsTable.renameSystem(
+            new RegExp(system.hostname, 'i'),
+            newDisplayName,
+          );
+        });
 
-    await test.step(`Delete the renamed system "${newDisplayName}" and verify it is removed`, async () => {
-      await searchByName(page, newDisplayName);
-      await expect(nameCell).toHaveCount(1, { timeout: 10000 });
-      const kebab = await waitForTableKebabReady(
-        page,
-        new RegExp(newDisplayName, 'i'),
-      );
-      await kebab.click();
-      await expect(kebab).toHaveAttribute('aria-expanded', 'true');
+        await test.step(`Deletes the renamed system "${newDisplayName}"`, async () => {
+          await systemsTable.searchByName(newDisplayName);
+          await expect(systemsTable.nameCell).toHaveCount(1, {
+            timeout: 10000,
+          });
 
-      const deleteButton = page
-        .getByRole('menuitem', { name: /^Delete/ })
-        .first();
-      await expect(deleteButton).toBeEnabled({
-        enabled: isSystemsViewEnabled || undefined,
-        timeout: 50000,
-      });
-      await deleteButton.click();
+          await systemsTable.deleteFromInventory(
+            new RegExp(newDisplayName, 'i'),
+          );
 
-      await expect(dialog).toBeVisible();
-      await dialog.getByRole('button', { name: 'Delete' }).click();
-
-      await searchByName(page, newDisplayName);
-      await expect(page.getByText('No matching systems found')).toBeVisible();
-    });
-  });
-
-  test('User should be able to delete multiple systems from Systems page', async ({
-    page,
-    systems,
-  }) => {
-    /**
-     * Jira References:
-       - https://issues.redhat.com/browse/RHINENG-21148 - Delete a system
-     * Metadata:
-       - requirements:
-       - inv-hosts-delete-by-id
-       - importance: critical
-     */
-    const dialog = page.locator('[role="dialog"]');
-    const nameCell = page.locator(
-      'tbody.pf-v6-c-table__tbody tr[data-ouia-component-type="PF6/TableRow"]',
+          await systemsTable.searchByName(newDisplayName);
+          await expect(page.getByText(NOT_FOUND)).toBeVisible();
+        });
+      },
     );
 
-    await test.step('Navigate to Inventory → Systems', async () => {
-      await navigateToInventorySystemsFunc(page);
-
-      await searchByName(page, systems.deleteSystemsPrefix);
-      await expect(nameCell).toHaveCount(systems.deleteSystems.length);
-    });
-
-    await test.step('Select all systems using Bulk Select', async () => {
-      const bulkSelectBtn = page
-        .locator('[data-ouia-component-id="BulkSelect-toggle"]')
-        .or(page.locator('[data-ouia-component-id="BulkSelect"]'));
-      await bulkSelectBtn.click();
-
-      await page.getByRole('menuitem', { name: 'Select page' }).click();
-      const bulkSelect = page
-        .locator('[id="bulk-select-systems-toggle-checkbox"]')
-        .or(page.locator('[data-ouia-component-id="BulkSelect-text"]'));
-      await expect(bulkSelect).toContainText(
-        `${systems.deleteSystems.length} selected`,
+    test('User deletes multiple systems from the Systems page', async ({
+      page,
+      systems,
+    }) => {
+      const systemsTable = systemsPage(page);
+      const rows = page.locator(
+        'tbody.pf-v6-c-table__tbody tr[data-ouia-component-type="PF6/TableRow"]',
       );
+
+      await test.step('Selects systems using Bulk Select', async () => {
+        await systemsTable.searchByName(systems.deleteSystemsPrefix);
+        await expect(rows).toHaveCount(systems.deleteSystems.length);
+
+        await systemsTable.bulkSelect.selectPage();
+        await expect(systemsTable.bulkSelect.selectedCountText).toContainText(
+          `${systems.deleteSystems.length} selected`,
+        );
+      });
+
+      await test.step('Deletes selected systems via bulk action', async () => {
+        await systemsTable.bulkDelete();
+
+        await systemsTable.searchByName(systems.deleteSystemsPrefix);
+        await expect(page.getByText(NOT_FOUND)).toBeVisible();
+      });
     });
-
-    await test.step('Delete selected systems via bulk action', async () => {
-      await page
-        .locator('[data-ouia-component-id="bulk-delete-button"]')
-        .click();
-
-      await expect(dialog).toBeVisible();
-      await expect(dialog).toContainText('Delete systems from inventory?');
-      await dialog.getByRole('button', { name: 'Delete' }).click();
-
-      await searchByName(page, systems.deleteSystemsPrefix);
-      await expect(page.getByText('No matching systems found')).toBeVisible();
-    });
-  });
-});
+  },
+);
 
 test.describe('System Export', { tag: ['@systems-table'] }, () => {
   test.describe.configure({ mode: 'serial' });
 
-  test('User should be able to export systems to JSON', async ({ page }) => {
-    await test.step('Navigate to Inventory → Systems', async () => {
-      await navigateToInventorySystemsFunc(page);
-    });
+  test.beforeEach(async ({ page }) => {
+    await navigateToInventorySystemsFunc(page);
+  });
 
-    await test.step('Open export menu and select "Export to JSON"', async () => {
+  test('User exports systems to JSON', async ({ page }) => {
+    const systemsTable = systemsPage(page);
+
+    await test.step('Exports systems to JSON via export menu', async () => {
       // Listen for the export API request to verify the export was initiated
       const exportRequestPromise = page.waitForRequest(
         (request) =>
@@ -158,11 +121,7 @@ test.describe('System Export', { tag: ['@systems-table'] }, () => {
           request.url().includes('/status'),
       );
 
-      await page.getByRole('button', { name: 'Export' }).click();
-
-      await page
-        .getByRole('menuitem', { name: 'Export all systems to JSON' })
-        .click();
+      await systemsTable.export.toJson();
 
       // Verify the export request was made successfully
       const exportRequest = await exportRequestPromise;
@@ -186,12 +145,10 @@ test.describe('System Export', { tag: ['@systems-table'] }, () => {
     });
   });
 
-  test('User should be able to export systems to CSV', async ({ page }) => {
-    await test.step('Navigate to Inventory → Systems', async () => {
-      await navigateToInventorySystemsFunc(page);
-    });
+  test('User exports systems to CSV', async ({ page }) => {
+    const systemsTable = systemsPage(page);
 
-    await test.step('Open export menu and select "Export to CSV"', async () => {
+    await test.step('Exports systems to CSV via export menu', async () => {
       // Listen for the export API request to verify the export was initiated
       const exportRequestPromise = page.waitForRequest(
         (request) =>
@@ -205,11 +162,7 @@ test.describe('System Export', { tag: ['@systems-table'] }, () => {
           request.url().includes('/status'),
       );
 
-      await page.getByRole('button', { name: 'Export' }).click();
-
-      await page
-        .getByRole('menuitem', { name: 'Export all systems to CSV' })
-        .click();
+      await systemsTable.export.toCsv();
 
       // Verify the export request was made successfully
       const exportRequest = await exportRequestPromise;
@@ -229,88 +182,61 @@ test.describe('System Export', { tag: ['@systems-table'] }, () => {
   });
 });
 
-test.describe('System Sorting', { tag: ['@systems-table'] }, () => {
-  (['ascending', 'descending'] as const).forEach((order) => {
-    test(`User can sort systems by Name column in ${order} order`, async ({
-      page,
-    }) => {
-      /**
-       * Jira References:
-       * - https://issues.redhat.com/browse/RHINENG-21942 – Sort systems by Name
-       * Metadata:
-       * - requirements: inv-hosts-get
-       * - importance: high
-       *
-       */
-
-      await test.step('Navigate to Inventory → Systems', async () => {
+test.describe(
+  'System Sorting',
+  {
+    tag: ['@systems-table'],
+    annotation: {
+      type: 'jira',
+      description: 'https://issues.redhat.com/browse/RHINENG-21942',
+    },
+  },
+  () => {
+    (['ascending', 'descending'] as const).forEach((order) => {
+      test.beforeEach(async ({ page }) => {
         await navigateToInventorySystemsFunc(page);
       });
 
-      await test.step(`Sort by Name column in ${order} order`, async () => {
-        const columnHeader = page
-          .locator('button.pf-v6-c-table__button')
-          .filter({ hasText: /^Name$/ })
-          .or(page.locator('th[data-label="Name"] button'));
-        await expect(columnHeader).toBeVisible();
+      test(`User sorts systems by Name column in ${order} order`, async ({
+        page,
+      }) => {
+        const systemsTable = systemsPage(page);
 
-        // Expected URL sort parameter: ascending = display_name, descending = -display_name
-        const expectedSortParam = {
-          ascending: /sort=display_name|sort_dir=asc/,
-          descending: /sort=-display_name|sort_dir=desc/,
-        };
+        await test.step(`Sorts by the Name column in ${order} order`, async () => {
+          // Expected URL sort parameter: ascending = display_name, descending = -display_name
+          const expectedSortParam = {
+            ascending: /sort=display_name|sort_dir=asc/,
+            descending: /sort=-display_name|sort_dir=desc/,
+          };
 
-        // Keep clicking until we reach the desired sort direction (max 3 clicks)
-        for (let attempt = 0; attempt < 3; attempt++) {
-          const currentSort = await columnHeader
-            .locator('..')
-            .getAttribute('aria-sort');
+          await systemsTable.sortBy('Name', order);
 
-          // If already at target, break
-          if (currentSort === order) {
-            break;
-          }
+          // Verify URL has exact sort parameter for the expected order
+          await expect(async () => {
+            const url = page.url();
+            expect(url).toMatch(expectedSortParam[order]);
+          }).toPass({ timeout: 5000 });
+        });
 
-          await columnHeader.click();
+        await test.step('Displays sorted systems', async () => {
+          await expect(systemsTable.nameCell.first()).toBeVisible();
 
-          // Wait for the sort to take effect
-          await expect(page).toHaveURL(/sort=|sort_dir=/);
-        }
+          const displayedNames = await systemsTable.nameCell.allTextContents();
+          expect(displayedNames.length).toBeGreaterThan(0);
+        });
 
-        // Verify we reached the target sort direction
-        await expect(async () => {
-          const finalSort = await columnHeader
-            .locator('..')
-            .getAttribute('aria-sort');
-          expect(finalSort).toBe(order);
-        }).toPass({ timeout: 5000 });
-
-        // Verify URL has exact sort parameter for the expected order
-        await expect(async () => {
-          const url = page.url();
-          expect(url).toMatch(expectedSortParam[order]);
-        }).toPass({ timeout: 5000 });
-      });
-
-      await test.step('Verify systems are displayed', async () => {
-        const nameCell = page
-          .locator('[data-ouia-component-id="systems-view-table-td-0-0"]')
-          .or(page.locator('td[data-label="Name"]'));
-        await expect(nameCell.first()).toBeVisible();
-
-        const displayedNames = await nameCell.allTextContents();
-        expect(displayedNames.length).toBeGreaterThan(0);
-      });
-
-      await test.step('Verify sort indicator is displayed', async () => {
-        const columnHeader = page
-          .locator('th')
-          .filter({ has: page.getByRole('button', { name: 'Name' }) })
-          .or(
-            page.locator('[data-ouia-component-id="systems-view-table-th-0"]'),
-          );
-        await expect(columnHeader).toHaveAttribute('aria-sort', order);
+        await test.step('Displays the sort indicator', async () => {
+          const columnHeader = page
+            .locator('th')
+            .filter({ has: page.getByRole('button', { name: 'Name' }) })
+            .or(
+              page.locator(
+                '[data-ouia-component-id="systems-view-table-th-0"]',
+              ),
+            );
+          await expect(columnHeader).toHaveAttribute('aria-sort', order);
+        });
       });
     });
-  });
-});
+  },
+);

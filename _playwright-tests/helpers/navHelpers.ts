@@ -1,5 +1,6 @@
 import { type Page } from '@playwright/test';
 import { test as base, expect } from '@playwright/test';
+import { closePopupsIfExist } from './loginHelpers';
 
 /**
  * Navigates the browser to the Systems inventory page and waits for the
@@ -8,6 +9,7 @@ import { test as base, expect } from '@playwright/test';
  */
 export const navigateToInventorySystemsFunc = async (page: Page) => {
   await page.goto('/insights/inventory/', { timeout: 100000 });
+  await closePopupsIfExist(page);
   await expect(page.getByRole('heading', { name: 'Systems' })).toBeVisible({
     timeout: 100000,
   });
